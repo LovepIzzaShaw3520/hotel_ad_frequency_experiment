@@ -313,8 +313,8 @@ def fixed_image(url, height=220, radius=16):
 def show_ad():
     st.markdown(
         f"""
-        <div style="width:100%; display:flex; justify-content:center; margin:18px 0 22px 0;">
-            <img src="{AD_IMAGE_DATA}" style="width:100%; max-width:1080px; height:auto; object-fit:contain; display:block; border-radius:14px;" />
+        <div style="width:100%; display:flex; justify-content:center; margin:10px 0 18px 0;">
+            <img src="{AD_IMAGE_DATA}" style="width:100%; max-width:520px; height:auto; object-fit:contain; display:block; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.08);" />
         </div>
         """,
         unsafe_allow_html=True,
