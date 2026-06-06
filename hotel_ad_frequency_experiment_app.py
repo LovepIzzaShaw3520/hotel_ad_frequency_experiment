@@ -3,10 +3,11 @@ import pandas as pd
 from datetime import date, timedelta, datetime
 from pathlib import Path
 import uuid
+import csv
 
 
 # =========================================================
-# 酒店预订广告频率实验系统 V1.0
+# 酒店预订广告频率实验系统 FINAL V1.0
 # 主题：不同广告展示频率对酒店预订体验的影响
 # 功能：
 # 1. 受试者页面 / 后台管理页面
@@ -27,6 +28,39 @@ st.set_page_config(
 
 DATA_PATH = Path("ad_frequency_experiment_data.csv")
 EVENT_PATH = Path("ad_frequency_experiment_events.csv")
+
+DATA_COLUMNS = [
+    "submit_time",
+    "participant_id",
+    "interface_mode",
+    "ad_frequency",
+    "ad_seen",
+    "selected_hotel_name",
+    "selected_room",
+    "room_price",
+    "total_price",
+    "paid",
+    "ad_perceived_frequency",
+    "ad_recall_count",
+    "ad_distracting",
+    "ad_disturbing",
+    "ad_forced",
+    "ad_interfering",
+    "ad_obtrusive",
+    "ad_intrusive",
+    "ad_in_the_way",
+    "birth_year",
+    "gender",
+]
+
+EVENT_COLUMNS = [
+    "time",
+    "participant_id",
+    "stage",
+    "event_type",
+    "detail",
+]
+
 
 HOTEL_CN = "云栖臻选酒店"
 HOTEL_EN = "CloudNest Select Hotel"
@@ -241,18 +275,28 @@ def log_event(event_type, detail=""):
 
 
 def save_events_to_csv():
+    """按固定字段保存行为日志。"""
     if not st.session_state.events:
         return
-    df = pd.DataFrame(st.session_state.events)
-    header = not EVENT_PATH.exists()
-    df.to_csv(EVENT_PATH, mode="a", index=False, header=header, encoding="utf-8-sig")
+    file_exists = EVENT_PATH.exists()
+    with EVENT_PATH.open("a", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=EVENT_COLUMNS, extrasaction="ignore")
+        if not file_exists:
+            writer.writeheader()
+        for event in st.session_state.events:
+            writer.writerow({col: event.get(col, "") for col in EVENT_COLUMNS})
     st.session_state.events = []
 
 
 def save_result_to_csv(result):
-    df = pd.DataFrame([result])
-    header = not DATA_PATH.exists()
-    df.to_csv(DATA_PATH, mode="a", index=False, header=header, encoding="utf-8-sig")
+    """按固定字段保存问卷数据，避免不同版本字段不一致导致CSV损坏。"""
+    row = {col: result.get(col, "") for col in DATA_COLUMNS}
+    file_exists = DATA_PATH.exists()
+    with DATA_PATH.open("a", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=DATA_COLUMNS, extrasaction="ignore")
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
 
 
 def reset_experiment():
@@ -672,11 +716,13 @@ def render_ota_payment():
 
 
 
+
 # =========================
 # 问卷
 # =========================
 
 def radio_scale_7(label, key, hint="1 = 非常不同意    7 = 非常同意"):
+    """7点量表。默认不选择；导出时未选择记为0。"""
     st.markdown(f"<div class='survey-question'>{label}</div>", unsafe_allow_html=True)
     st.caption(hint)
     value = st.radio(
@@ -691,6 +737,7 @@ def radio_scale_7(label, key, hint="1 = 非常不同意    7 = 非常同意"):
 
 
 def radio_scale_5(label, key, hint="请选择 1 - 5"):
+    """5点次数回忆题。默认不选择；导出时未选择记为0。"""
     st.markdown(f"<div class='survey-question'>{label}</div>", unsafe_allow_html=True)
     st.caption(hint)
     value = st.radio(
@@ -711,25 +758,25 @@ def render_survey():
     st.markdown("### 预订体验问卷")
     st.markdown("请根据刚才的网页浏览与预订体验回答以下问题。")
 
-    q0_frequency = radio_scale_7(
+    ad_perceived_frequency = radio_scale_7(
         "1. 您认为在网页浏览中公益营销活动的展示频率如何？",
-        "q0_frequency",
+        "ad_perceived_frequency",
         hint="1 = 非常少    4 = 适度    7 = 非常多",
     )
 
-    q0_recall = radio_scale_5(
+    ad_recall_count = radio_scale_5(
         "2. 您是否还记得在刚才的网页中遇到过几次公益营销界面？",
-        "q0_recall",
+        "ad_recall_count",
         hint="1 / 2 / 3 / 4 / 5",
     )
 
-    q1 = radio_scale_7("3. 当我看到这则广告时，我觉得它是：分散注意力的。", "q1_distracting")
-    q2 = radio_scale_7("4. 当我看到这则广告时，我觉得它是：令人不安的。", "q2_disturbing")
-    q3 = radio_scale_7("5. 当我看到这则广告时，我觉得它是：强制的。", "q3_forced")
-    q4 = radio_scale_7("6. 当我看到这则广告时，我觉得它是：干扰性的。", "q4_interfering")
-    q5 = radio_scale_7("7. 当我看到这则广告时，我觉得它是：侵扰性的。", "q5_obtrusive")
-    q6 = radio_scale_7("8. 当我看到这则广告时，我觉得它是：侵入性的。", "q6_intrusive")
-    q7 = radio_scale_7("9. 当我看到这则广告时，我觉得它是：碍事的。", "q7_in_the_way")
+    ad_distracting = radio_scale_7("3. 当我看到这则广告时，我觉得它是：分散注意力的。", "ad_distracting")
+    ad_disturbing = radio_scale_7("4. 当我看到这则广告时，我觉得它是：令人不安的。", "ad_disturbing")
+    ad_forced = radio_scale_7("5. 当我看到这则广告时，我觉得它是：强制的。", "ad_forced")
+    ad_interfering = radio_scale_7("6. 当我看到这则广告时，我觉得它是：干扰性的。", "ad_interfering")
+    ad_obtrusive = radio_scale_7("7. 当我看到这则广告时，我觉得它是：侵扰性的。", "ad_obtrusive")
+    ad_intrusive = radio_scale_7("8. 当我看到这则广告时，我觉得它是：侵入性的。", "ad_intrusive")
+    ad_in_the_way = radio_scale_7("9. 当我看到这则广告时，我觉得它是：碍事的。", "ad_in_the_way")
 
     st.markdown("---")
     st.markdown("<div class='survey-question'>10. 您的出生年份？</div>", unsafe_allow_html=True)
@@ -768,15 +815,15 @@ def render_survey():
                 "room_price": st.session_state.room_price,
                 "total_price": total_price(),
                 "paid": st.session_state.paid,
-                "perceived_frequency": q0_frequency,
-                "recalled_ad_count": q0_recall,
-                "q1_distracting": q1,
-                "q2_disturbing": q2,
-                "q3_forced": q3,
-                "q4_interfering": q4,
-                "q5_obtrusive": q5,
-                "q6_intrusive": q6,
-                "q7_in_the_way": q7,
+                "ad_perceived_frequency": ad_perceived_frequency,
+                "ad_recall_count": ad_recall_count,
+                "ad_distracting": ad_distracting,
+                "ad_disturbing": ad_disturbing,
+                "ad_forced": ad_forced,
+                "ad_interfering": ad_interfering,
+                "ad_obtrusive": ad_obtrusive,
+                "ad_intrusive": ad_intrusive,
+                "ad_in_the_way": ad_in_the_way,
                 "birth_year": birth_year,
                 "gender": gender,
             }
@@ -844,6 +891,20 @@ def make_participant_url():
     return f"?mode={mode}&adfreq={freq_map.get(st.session_state.ad_frequency, '3')}"
 
 
+
+def safe_read_csv(path):
+    """安全读取CSV。若旧测试数据列数不一致或文件损坏，不让后台崩溃。"""
+    try:
+        return pd.read_csv(path)
+    except pd.errors.ParserError:
+        try:
+            return pd.read_csv(path, on_bad_lines="skip")
+        except Exception:
+            return None
+    except Exception:
+        return None
+
+
 def render_admin_panel():
     st.markdown("<div class='main-title'>后台管理页面</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-title'>本页面用于设置实验条件、预览受试者页面，并下载实验数据。受试者默认不会看到这里。</div>", unsafe_allow_html=True)
@@ -888,7 +949,14 @@ def render_admin_panel():
     with tab2:
         st.markdown("### 实验数据")
         if DATA_PATH.exists():
-            df = pd.read_csv(DATA_PATH)
+            df = safe_read_csv(DATA_PATH)
+            if df is None:
+                st.error("实验数据文件读取失败，通常是因为旧版本测试数据和新版字段不一致，或CSV文件被写坏。")
+                if st.button("删除损坏的实验数据文件，重新开始收集", type="primary"):
+                    DATA_PATH.unlink(missing_ok=True)
+                    st.success("已删除损坏的数据文件，请重新刷新页面。")
+                    st.rerun()
+                st.stop()
             st.dataframe(df, use_container_width=True)
             st.download_button("下载实验结果 CSV", data=DATA_PATH.read_bytes(), file_name="ad_frequency_experiment_data.csv", mime="text/csv")
 
@@ -909,7 +977,14 @@ def render_admin_panel():
 
         st.markdown("### 行为日志")
         if EVENT_PATH.exists():
-            event_df = pd.read_csv(EVENT_PATH)
+            event_df = safe_read_csv(EVENT_PATH)
+            if event_df is None:
+                st.error("行为日志文件读取失败，通常是因为旧版本日志格式不一致或CSV文件被写坏。")
+                if st.button("删除损坏的行为日志文件，重新开始记录", type="primary"):
+                    EVENT_PATH.unlink(missing_ok=True)
+                    st.success("已删除损坏的行为日志文件，请重新刷新页面。")
+                    st.rerun()
+                st.stop()
             st.dataframe(event_df, use_container_width=True)
             st.download_button("下载行为日志 CSV", data=EVENT_PATH.read_bytes(), file_name="ad_frequency_experiment_events.csv", mime="text/csv")
         else:
@@ -920,6 +995,9 @@ def render_admin_panel():
             """
             **受试者链接：** 普通网页链接，不带 `?admin=1`。  
             **后台链接：** 在网页链接后加 `?admin=1`。  
+
+            数据字段已经按最终问卷固定为：
+            `ad_perceived_frequency`, `ad_recall_count`, `ad_distracting`, `ad_disturbing`, `ad_forced`, `ad_interfering`, `ad_obtrusive`, `ad_intrusive`, `ad_in_the_way`, `birth_year`, `gender`。
 
             URL参数：
             - `mode=hotel` 或 `mode=ota`
